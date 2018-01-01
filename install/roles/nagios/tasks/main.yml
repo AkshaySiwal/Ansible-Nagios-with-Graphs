@@ -1,0 +1,181 @@
+---
+  
+- name: Import EPEL GPG Key
+  rpm_key: key=https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-6 state=present
+  become: true
+
+- name: Check for EPEL repo
+  yum: name=https://dl.fedoraproject.org/pub/epel/epel-release-latest-6.noarch.rpm  state=present
+  become: true
+  
+
+- name: Install HTTPD and OpenSSL
+  yum: name={{ item }} state=present
+  become: true
+  with_items:
+    - httpd
+    - httpd-tools
+    - mod_ssl
+    - openssl
+    - net-snmp-utils
+
+
+- name: Setup nagios SSL HTTPD vhost
+  copy: src=nagios.conf dest=/etc/httpd/conf.d/
+  become: true
+
+- name: Install nagios packages and common plugins and pnp4nagios
+  yum: name={{ item }} state=present
+  become: true
+  with_items:
+    - nagios
+    - nagios-common
+    - nagios-plugins-ssh
+    - nagios-plugins-tcp
+    - nagios-plugins-http
+    - nagios-plugins-load
+    - nagios-plugins-nrpe
+    - nagios-plugins-uptime
+    - nagios-plugins-swap
+    - nagios-plugins-ping
+    - nagios-plugins-procs
+    - nagios-plugins-users
+    - nagios-plugins-disk
+    - nagios-plugins-dns
+    - libsemanage-python
+    - pnp4nagios
+
+- name: Check nagios Users
+  stat: path=/etc/nagios/passwd
+  ignore_errors: true
+  register: nagios_user_pwfile_exists
+  become: true
+
+- name: Create empty password file
+  command: touch /etc/nagios/passwd
+  args:
+    creates: /etc/nagios/passwd
+  when: nagios_user_pwfile_exists != 0
+  become: true
+
+- name: Create nagios admin user
+  command: htpasswd -b -c /etc/nagios/passwd {{nagios_username}} {{nagios_password}}
+  ignore_errors: true
+  when: nagios_user_pwfile_exists != 0
+  become: true
+
+- name: Create nagios guest user
+  command: htpasswd -b /etc/nagios/passwd {{nagios_ro_username}} {{nagios_ro_password}}
+  when: nagios_create_guest_user
+  become: true
+
+- name: Configure nagios main configuration
+  copy: src=nagios.cfg dest=/etc/nagios/nagios.cfg
+  become: true
+  
+- name: Generate the nagios monitoring templates
+  template: src={{ item + ".j2" }}  dest=/etc/nagios/objects/{{ item }}
+  with_items:
+    - contacts.cfg
+    - servers.cfg
+    - services.cfg
+  register: nagios_needs_restart
+  become: true
+
+- name: Generate the nagios contact template and localhost config
+  copy: src={{ item  }}  dest=/etc/nagios/objects/{{ item }}
+  with_items:
+    - commands.cfg
+    - localhost.cfg
+    - timeperiods.cfg
+    - graphs.cfg
+    - templates.cfg
+    - windows.cfg
+  become: true
+
+- name: Generate the nagios user CGI template
+  template: src={{ item + ".j2" }}  dest=/etc/nagios/{{ item }}
+  with_items:
+    - cgi.cfg
+  become: true
+
+
+ # It creats two pnp4nagios pages for you  
+- name: Generate the nagios pnp4nagios pages
+  copy : src={{ item  }}  dest=/etc/pnp4nagios/pages/{{ item }}
+  with_items:
+    - network_availability.cfg
+    - server_availability.cfg
+  become: true
+
+
+  # SELinux boolean for nagios
+- name: Apply SELinux boolean nagios_run_sudo
+  seboolean: name=nagios_run_sudo state=yes persistent=yes
+  ignore_errors: true
+  become: true
+
+# SELinux boolean for nagios
+- name: Apply SELinux boolean logging_syslogd_run_nagios_plugins
+  seboolean: name=logging_syslogd_run_nagios_plugins state=yes persistent=yes
+  ignore_errors: true
+  become: true
+
+# https://bugzilla.redhat.com/show_bug.cgi?id=1291718
+- name: Create nagios socket tmp files
+  file:
+    path=/var/log/nagios/rw
+    state=directory
+    owner=nagios
+    group=nagios
+    mode=0777
+    seuser=system_u
+  become: true
+
+# nagios upgrade to 4.2.4 requires this
+# todo: file bug
+- name: Create nagios results directory
+  file:
+    path=/var/log/nagios/spool/checkresults
+    state=directory
+    owner=nagios
+    group=nagios
+    mode=0755
+    seuser=system_u
+  become: true
+
+
+# change listening port for http to match group_vars/all.yml
+- name: Set HTTP Listen Port
+  lineinfile: dest=/etc/httpd/conf/httpd.conf \
+          regexp="^Listen" \
+          line="Listen {{nagios_http_port}}"
+  become: true
+
+
+- name: Start nagios service
+  command: service nagios restart
+  when: nagios_needs_restart != 0
+  become: true
+
+- name: Start npcd service
+  command: service npcd restart
+  when: nagios_needs_restart != 0
+  become: true
+
+- name: Set nagios to start on boot
+  command: chkconfig nagios on
+  ignore_errors: true
+  become: true
+
+- name: Setup HTTPD service
+  command: chkconfig httpd on
+  ignore_errors: true
+  when: nagios_needs_restart !=0
+  become: true
+
+- name: Restart HTTPD service
+  command: service httpd restart
+  ignore_errors: true
+  when: nagios_needs_restart !=0
+  become: true

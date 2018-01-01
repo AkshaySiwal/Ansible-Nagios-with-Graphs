@@ -1,0 +1,57 @@
+
+---
+# we need TCP/80 and TCP/443 open
+
+# iptables-services
+- name: check firewall rules for TCP/{{nagios_http_port}} (iptables-services)
+  shell: grep "dport {{nagios_http_port}} \-j ACCEPT" /etc/sysconfig/iptables | wc -l
+  ignore_errors: true
+  register: iptables_nagios_http_port_exists
+  failed_when: iptables_nagios_http_port_exists == 127
+  no_log: true
+  become: true
+
+- name: Add firewall rule for TCP/{{nagios_http_port}} (iptables-services)
+  lineinfile:
+    dest: /etc/sysconfig/iptables
+    line: '-A INPUT -p tcp -m tcp --dport {{nagios_http_port}} -j ACCEPT'
+    regexp: '^INPUT -i lo -j ACCEPT'
+    insertbefore: '-A INPUT -i lo -j ACCEPT'
+    backup: yes
+  when: iptables_nagios_http_port_exists.stdout|int == 0
+  register: iptables_needs_restart
+  become: true
+
+- name: Restart iptables-services for TCP/{{nagios_http_port}} (iptables-services)
+  shell: service iptables reload
+  ignore_errors: true
+  when: iptables_needs_restart != 0 
+  become: true
+
+
+# iptables-services
+- name: check firewall rules for TCP/{{nagios_https_port}} (iptables-services)
+  shell: grep "dport {{nagios_https_port}} \-j ACCEPT" /etc/sysconfig/iptables | wc -l
+  ignore_errors: true
+  register: iptables_nagios_https_port_exists
+  failed_when: iptables_nagios_https_port_exists == 127
+  no_log: true
+  become: true
+
+- name: Add firewall rule for TCP/{{nagios_https_port}} (iptables-services)
+  lineinfile:
+    dest: /etc/sysconfig/iptables
+    line: '-A INPUT -p tcp -m tcp --dport {{nagios_https_port}} -j ACCEPT'
+    regexp: '^INPUT -i lo -j ACCEPT'
+    insertbefore: '-A INPUT -i lo -j ACCEPT'
+    backup: yes
+  when: iptables_nagios_https_port_exists.stdout|int == 0
+  register: iptables_needs_restart
+  become: true
+
+- name: Restart iptables-services for TCP/{{nagios_https_port}} (iptables-services)
+  shell: service iptables reload
+  ignore_errors: true
+  when: iptables_needs_restart != 0 
+  become: true
+

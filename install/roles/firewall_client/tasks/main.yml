@@ -1,0 +1,29 @@
+
+---
+# we need TCP/5666 open
+
+- name: check firewall rules for TCP/{{nrpe_tcp_port}} (iptables-services)
+  shell: grep "dport {{nrpe_tcp_port}} \-j ACCEPT" /etc/sysconfig/iptables | wc -l
+  ignore_errors: true
+  register: iptables_nrpe_tcp_port_exists
+  failed_when: iptables_nrpe_tcp_port_exists == 127
+  no_log: true
+  become: true
+
+- name: Add firewall rule for TCP/{{nrpe_tcp_port}} (iptables-services)
+  lineinfile:
+    dest: /etc/sysconfig/iptables
+    line: '-A INPUT -p tcp -m tcp --dport {{nrpe_tcp_port}} -j ACCEPT'
+    regexp: '^INPUT -i lo -j ACCEPT'
+    insertbefore: '-A INPUT -i lo -j ACCEPT'
+    backup: yes
+  when: iptables_nrpe_tcp_port_exists.stdout|int == 0
+  register: iptables_needs_restart
+  become: true
+
+- name: Restart iptables-services for TCP/{{nrpe_tcp_port}} (iptables-services)
+  shell: service iptables reload
+  ignore_errors: true
+  when: iptables_needs_restart != 0 
+  become: true
+

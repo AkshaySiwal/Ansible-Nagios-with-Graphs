@@ -1,0 +1,54 @@
+---
+# install and setup NRPE and checks
+
+- name: Import EPEL GPG Key
+  rpm_key: key=https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-6 state=present
+  become: true
+
+- name: Check for EPEL repo
+  yum: name=https://dl.fedoraproject.org/pub/epel/epel-release-latest-6.noarch.rpm state=present
+  become: true
+  
+  
+- name: Install NRPE and Common Plugins
+  yum: name={{ item }} state=present
+  become: true
+  with_items:
+    - nrpe
+    - nagios-plugins-load
+    - nagios-plugins-nrpe
+    - nagios-plugins-uptime
+    - nagios-plugins-swap
+    - nagios-plugins-procs
+    - nagios-plugins-users
+    - nagios-plugins-disk
+    - nagios-plugins-tcp
+    - libsemanage-python
+
+- name: Setup NRPE client configuration
+  template:
+    src=nrpe.cfg.j2
+    dest=/etc/nagios/nrpe.cfg
+  become: true
+
+# SELinux boolean for nagios
+- name: Apply SELinux boolean nagios_run_sudo
+  seboolean: name=nagios_run_sudo state=yes persistent=yes
+  ignore_errors: true
+  become: true
+
+# SELinux boolean for nagios
+- name: Apply SELinux boolean logging_syslogd_run_nagios_plugins
+  seboolean: name=logging_syslogd_run_nagios_plugins state=yes persistent=yes
+  ignore_errors: true
+  become: true
+
+- name: Start NRPE service
+  command: chkconfig nrpe on
+  ignore_errors: true
+  become: true
+
+- name: Set NRPE to start on boot
+  command: service nrpe restart
+  ignore_errors: true
+  become: true

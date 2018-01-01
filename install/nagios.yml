@@ -1,0 +1,22 @@
+---
+
+#- hosts: all
+#  remote_user: "{{ ansible_system_user }}"
+#  tasks: []
+
+# role for nagios clients via NRPE
+- hosts: all:!nagios
+  gather_facts : True
+  remote_user: "{{ ansible_system_user }}"
+  roles:
+    - { role: nagios-client }
+    - { role: firewall_client, when: manage_firewall_client }
+
+# role for nagios server
+- hosts: nagios
+  gather_facts : True
+  remote_user: "{{ ansible_system_user }}"
+  roles:
+    - { role: nagios }
+    - { role: firewall, when: manage_firewall }
+    - { role: instructions }

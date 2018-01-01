@@ -1,0 +1,22 @@
+# service checks to be applied to the local Nagios host
+# see install/roles/nagios/templates/*.cfg.j2 to define host checks
+
+# only define this if enabled in group_vars/all.yml
+
+{% if nagios_host_monitor_swap == true %}
+
+define service {
+        use                             local-service,srv-pnp
+        host_name                       localhost
+        service_description             Swap Usage
+        check_command                   check_local_swap!20!10
+}
+
+{% endif %}
+
+define service {
+        use                             local-service,srv-pnp
+        host_name                       localhost
+        service_description             Uptime
+        check_command                   check_uptime
+}
