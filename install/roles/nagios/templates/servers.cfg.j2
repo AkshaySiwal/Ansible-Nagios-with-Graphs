@@ -76,3 +76,11 @@ define service{
     check_command           check_nrpe!check_uptime
     notifications_enabled   1
 }
+
+define service{
+    use                     generic-service,srv-pnp
+    hostgroup_name          servers
+    service_description     CPU Usage
+    check_command           check_nrpe!check_cpu_time
+    notifications_enabled   1
+}
