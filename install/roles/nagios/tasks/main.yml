@@ -108,6 +108,12 @@
     - server_availability.cfg
   become: true
 
+# Copy check_cpu_time.php to /usr/share/nagios/html/pnp4nagios/templates
+- name: Copy tempate for CPU Time plugin
+  copy : src={{ item  }}  dest=/usr/share/nagios/html/pnp4nagios/templates/{{ item }}
+  with_items:
+    - check_cpu_time.php
+  become: true
 
   # SELinux boolean for nagios
 - name: Apply SELinux boolean nagios_run_sudo
