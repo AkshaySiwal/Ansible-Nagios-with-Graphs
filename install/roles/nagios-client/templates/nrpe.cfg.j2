@@ -73,11 +73,7 @@ nrpe_group=nrpe
 # NOTE: This option is ignored if NRPE is running under either inetd or xinetd
 
 ## This needs to be generated for inventory
-{% for host in groups['nagios'] %}
-
-allowed_hosts=127.0.0.1,{{ ansible_default_ipv4.address }}
-
-{% endfor %}
+allowed_hosts=127.0.0.1,{% for host in groups['nagios'] -%}{{ hostvars[host]['ansible_eth0']['ipv4']['address'] }}{% if not loop.last %}, {% endif %} {%- endfor %}
 
 # COMMAND ARGUMENT PROCESSING
 # This option determines whether or not the NRPE daemon will allow clients
