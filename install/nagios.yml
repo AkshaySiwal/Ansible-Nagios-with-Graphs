@@ -5,7 +5,7 @@
 #  tasks: []
 
 # role for nagios clients via NRPE
-- hosts: all:!nagios
+- hosts: all
   gather_facts : True
   remote_user: "{{ ansible_system_user }}"
   roles:
