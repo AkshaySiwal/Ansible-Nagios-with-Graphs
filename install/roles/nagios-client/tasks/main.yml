@@ -24,11 +24,21 @@
     - nagios-plugins-disk
     - nagios-plugins-tcp
     - libsemanage-python
+ 
 
 - name: Setup NRPE client configuration
   template:
     src=nrpe.cfg.j2
     dest=/etc/nagios/nrpe.cfg
+  become: true
+
+- name: Plugin for CPU Time 
+  copy:
+    src={{item}}
+    dest={{nagios_plugin_path}}/{{item}}
+    mode=755
+  with_items :
+    - check_cpu_time.sh
   become: true
 
 # SELinux boolean for nagios
