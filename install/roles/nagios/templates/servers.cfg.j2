@@ -7,9 +7,9 @@ define hostgroup {
 {% for host in groups['servers'] %}
 define host {
 	use                     linux-server,host-pnp
-	host_name               {{ host }}
-	alias                   {{ host }}
-	address                 {{ host }}
+        host_name               {{ host }}
+        alias                   {{ hostvars[host]['ansible_eth0']['ipv4']['address'] }}
+        address                 {{ hostvars[host]['ansible_eth0']['ipv4']['address'] }}
 	hostgroups 		servers
 }
 {% endfor %}
